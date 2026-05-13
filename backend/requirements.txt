@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+httpx
+psycopg2-binary
+sqlalchemy
+redis
+scikit-learn
+pandas
+numpy
+networkx
+python-socketio
+websockets
+pydantic
