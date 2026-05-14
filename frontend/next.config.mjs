@@ -9,8 +9,6 @@ const backendProxy = process.env.API_PROXY_TARGET || process.env.BACKEND_URL || 
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@heroui/react"],
-  // Monorepo: parent repo also has a package-lock.json; pin tracing to this app root.
-  outputFileTracingRoot: path.join(__dirname, "..", ".."),
   async rewrites() {
     if (!backendProxy) return [];
     const base = String(backendProxy).replace(/\/$/, "");
