@@ -1,4 +1,4 @@
-# Squad Sentinel (Titan)
+#Squad Sentinel (Titan)
 
 Fraud-monitoring demo: **FastAPI** + **PostgreSQL** + **Redis** + **Socket.IO** backend, and a **Next.js** real-time operations UI (HeroUI, Chart.js, live feed, alert queue).
 
