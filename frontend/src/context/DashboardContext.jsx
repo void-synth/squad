@@ -1,3 +1,5 @@
+"use client";
+
 import {
   createContext,
   useCallback,
@@ -9,6 +11,7 @@ import {
 } from "react";
 import {
   escalateAlert as apiEscalate,
+  formatApiError,
   getAlerts,
   getStats,
   getTransactions,
@@ -51,12 +54,12 @@ export function DashboardProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    if (import.meta.env.DEV) {
-      if (!import.meta.env.VITE_API_URL) {
-        console.warn("[Titan] VITE_API_URL is unset; API calls use same-origin.");
+    if (process.env.NODE_ENV === "development") {
+      if (!process.env.NEXT_PUBLIC_API_URL) {
+        console.warn("[Titan] NEXT_PUBLIC_API_URL is unset; API calls use same-origin.");
       }
-      if (!import.meta.env.VITE_SOCKET_URL) {
-        console.warn("[Titan] VITE_SOCKET_URL is unset; Socket.IO uses same-origin.");
+      if (!process.env.NEXT_PUBLIC_SOCKET_URL) {
+        console.warn("[Titan] NEXT_PUBLIC_SOCKET_URL is unset; Socket.IO uses same-origin.");
       }
     }
   }, []);
@@ -79,13 +82,7 @@ export function DashboardProvider({ children }) {
         setStats(st || {});
       } catch (e) {
         if (cancelled) return;
-        const msg =
-          e?.response?.data?.detail != null
-            ? typeof e.response.data.detail === "string"
-              ? e.response.data.detail
-              : JSON.stringify(e.response.data.detail)
-            : e?.message || "Failed to load dashboard data";
-        setBootstrapError(msg);
+        setBootstrapError(formatApiError(e));
         console.error("Dashboard data load failed", e);
       } finally {
         if (!cancelled) setTransactionsLoading(false);
@@ -138,7 +135,7 @@ export function DashboardProvider({ children }) {
       if (filter && payload.status !== filter) return;
       setTransactions((prev) => {
         const next = [payload, ...prev.filter((t) => t.transaction_ref !== payload.transaction_ref)];
-        return next.slice(0, 200);
+        return next.slice(0, 300);
       });
     });
 
@@ -158,7 +155,9 @@ export function DashboardProvider({ children }) {
         receiver_bank: payload.receiver_bank,
         amount_naira: payload.amount_naira,
         created_at: payload.created_at,
-        resolved_at: null,
+        resolved_at: payload.resolved_at ?? null,
+        resolved_by: payload.resolved_by ?? "",
+        transaction: payload.transaction,
       });
       if (!normalized) return;
       setAlerts((prev) => {

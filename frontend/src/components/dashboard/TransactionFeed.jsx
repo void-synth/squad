@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useRef } from "react";
-import { Link } from "react-router-dom";
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { Button, Card, Chip, Spinner } from "@heroui/react";
 import { ArrowRight2, Flash, Radar2 } from "../../icons/isax.jsx";
 import { useDashboard } from "../../context/DashboardContext.jsx";
+
+const PAGE_SIZE = 10;
 
 const fmt = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 });
 
@@ -44,13 +48,28 @@ export default function TransactionFeed() {
     transactionsLoading,
   } = useDashboard();
   const listRef = useRef(null);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
-    if (listRef.current) listRef.current.scrollTop = 0;
-  }, [transactions.length, transactionStatusFilter]);
+    setPage(1);
+  }, [transactionStatusFilter]);
 
   const count = transactions.length;
   const rows = useMemo(() => transactions, [transactions]);
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+
+  useEffect(() => {
+    setPage((p) => Math.min(Math.max(1, p), totalPages));
+  }, [totalPages]);
+
+  useEffect(() => {
+    if (listRef.current) listRef.current.scrollTop = 0;
+  }, [page, transactionStatusFilter, rows.length]);
+
+  const displayedRows = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return rows.slice(start, start + PAGE_SIZE);
+  }, [rows, page]);
 
   return (
     <Card.Root className="flex min-h-0 flex-1 flex-col rounded-2xl border border-default-200/80 bg-content1/80 shadow-sm backdrop-blur-sm">
@@ -89,7 +108,7 @@ export default function TransactionFeed() {
         })}
       </div>
 
-      <Card.Content className="relative min-h-0 flex-1 overflow-hidden p-0">
+      <Card.Content className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-0">
         {transactionsLoading ? (
           <div className="bg-content1/60 absolute inset-0 z-[1] flex items-center justify-center gap-3 backdrop-blur-sm">
             <Spinner color="primary" size="md" />
@@ -98,13 +117,13 @@ export default function TransactionFeed() {
         ) : null}
         <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 sm:p-3">
         <div className="flex flex-col gap-2">
-          {rows.map((tx) => {
+          {displayedRows.map((tx) => {
             const ref = tx.transaction_ref || tx.id;
             const to = `/transactions/${encodeURIComponent(String(ref))}`;
             return (
               <Link
                 key={String(ref)}
-                to={to}
+                href={to}
                 className="group border border-default-200/60 bg-content2/40 hover:border-primary/35 hover:bg-content2/90 flex rounded-xl p-3 no-underline transition-all"
               >
                 <div className="min-w-0 flex-1 pr-3">
@@ -119,6 +138,11 @@ export default function TransactionFeed() {
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-2 text-right">
                   <p className="text-default-foreground text-sm font-bold">{fmt.format(tx.amount_naira ?? 0)}</p>
+                  {tx.platform_fee_naira != null && tx.net_settlement_naira != null ? (
+                    <p className="text-default-500 max-w-[11rem] text-right text-[0.65rem] leading-snug">
+                      Fee {fmt.format(tx.platform_fee_naira)} · Net {fmt.format(tx.net_settlement_naira)}
+                    </p>
+                  ) : null}
                   {tx.risk_score > 0 ? (
                     <p className="text-warning font-mono text-xs">Risk {(Number(tx.risk_score) * 100).toFixed(0)}%</p>
                   ) : null}
@@ -141,6 +165,39 @@ export default function TransactionFeed() {
           </div>
         ) : null}
         </div>
+
+        {!transactionsLoading && totalPages > 1 ? (
+          <div className="border-default-200/70 bg-content1/95 flex shrink-0 flex-wrap items-center justify-between gap-2 border-t px-3 py-2.5 sm:px-4">
+            <span className="text-default-500 text-xs tabular-nums">
+              Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, count)} of {count.toLocaleString()}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                radius="lg"
+                variant="bordered"
+                className="min-w-[5.5rem] font-semibold"
+                isDisabled={page <= 1}
+                onPress={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Previous
+              </Button>
+              <span className="text-default-600 px-1 text-xs font-semibold tabular-nums">
+                {page} / {totalPages}
+              </span>
+              <Button
+                size="sm"
+                radius="lg"
+                variant="bordered"
+                className="min-w-[5.5rem] font-semibold"
+                isDisabled={page >= totalPages}
+                onPress={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </Card.Content>
     </Card.Root>
   );

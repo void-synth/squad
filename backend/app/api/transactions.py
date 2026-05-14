@@ -6,24 +6,32 @@ import json
 from datetime import datetime, timezone
 from typing import Annotated, Any
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 
 from app.ai.graph_engine import transaction_graph
+from app.core.config import settings
 from app.core.database import get_db
-from app.core.socket_manager import broadcast_alert
+from app.core.socket_manager import broadcast_alert, broadcast_stats
 from app.models.models import AuditLog, FraudAlert, Transaction
+from app.services.platform_fee import settlement_breakdown_gross_kobo, summary_fee_fields
 from app.services.stats import dashboard_stats
+from app.services.squad_client import squad_client
 
 router = APIRouter(prefix="/api/v1", tags=["transactions"])
 
+logger = logging.getLogger(__name__)
+
 
 def _tx_to_summary(tx: Transaction) -> dict[str, Any]:
-    return {
+    gross = float(tx.amount or 0)
+    row: dict[str, Any] = {
         "id": tx.id,
         "transaction_ref": tx.transaction_ref,
-        "amount_naira": float(tx.amount) / 100.0,
+        "amount_naira": gross / 100.0,
         "sender_account": tx.sender_account,
         "receiver_account": tx.receiver_account,
         "sender_bank": tx.sender_bank,
@@ -32,6 +40,8 @@ def _tx_to_summary(tx: Transaction) -> dict[str, Any]:
         "risk_score": float(tx.risk_score or 0),
         "created_at": tx.created_at.isoformat() if tx.created_at else None,
     }
+    row.update(summary_fee_fields(gross))
+    return row
 
 
 @router.get("/transactions")
@@ -42,12 +52,12 @@ def list_transactions(
     q = db.query(Transaction).order_by(Transaction.created_at.desc())
     if tx_status:
         q = q.filter(Transaction.status == tx_status)
-    rows = q.limit(100).all()
+    rows = q.limit(300).all()
     return [_tx_to_summary(t) for t in rows]
 
 
 @router.get("/transactions/{transaction_ref}")
-def get_transaction(transaction_ref: str, db: Annotated[Session, Depends(get_db)]):
+async def get_transaction(transaction_ref: str, db: Annotated[Session, Depends(get_db)]):
     tx = db.query(Transaction).filter_by(transaction_ref=transaction_ref).first()
     if tx is None:
         raise HTTPException(status_code=404, detail="Not found")
@@ -58,10 +68,13 @@ def get_transaction(transaction_ref: str, db: Annotated[Session, Depends(get_db)
         .first()
     )
     graph_data = transaction_graph.get_graph_data(tx.sender_account)
+    gross_kobo = float(tx.amount or 0)
     out: dict[str, Any] = {
         "transaction": _tx_to_summary(tx),
+        "settlement": settlement_breakdown_gross_kobo(gross_kobo),
         "fraud_alert": None,
         "graph_data": graph_data,
+        "squad": None,
     }
     if alert:
         out["fraud_alert"] = {
@@ -75,6 +88,11 @@ def get_transaction(transaction_ref: str, db: Annotated[Session, Depends(get_db)
             "resolved_at": alert.resolved_at.isoformat() if alert.resolved_at else None,
             "created_at": alert.created_at.isoformat() if alert.created_at else None,
         }
+    if settings["SQUAD_SECRET_KEY"]:
+        try:
+            out["squad"] = await squad_client.get_transaction_details(transaction_ref)
+        except Exception as e:
+            logger.warning("Squad verify failed for %s: %s", transaction_ref, e)
     return out
 
 
@@ -152,14 +170,19 @@ async def release_alert(alert_id: int, body: AnalystActionBody, db: Annotated[Se
             "reason": alert.reason,
             "pattern_type": alert.pattern_type,
             "action_taken": alert.action_taken,
+            "resolved_by": alert.resolved_by,
+            "resolved_at": alert.resolved_at.isoformat() if alert.resolved_at else None,
             "sender_account": tx.sender_account,
             "sender_bank": tx.sender_bank,
             "receiver_account": tx.receiver_account,
             "receiver_bank": tx.receiver_bank,
             "amount_naira": float(tx.amount) / 100.0,
             "created_at": alert.created_at.isoformat() if alert.created_at else None,
+            "transaction": _tx_to_summary(tx),
         }
     )
+    stats = dashboard_stats(db)
+    await broadcast_stats(stats)
 
     return {
         "id": alert.id,
@@ -205,14 +228,19 @@ async def escalate_alert(alert_id: int, body: AnalystActionBody, db: Annotated[S
             "reason": alert.reason,
             "pattern_type": alert.pattern_type,
             "action_taken": alert.action_taken,
+            "resolved_by": alert.resolved_by,
+            "resolved_at": alert.resolved_at.isoformat() if alert.resolved_at else None,
             "sender_account": tx.sender_account,
             "sender_bank": tx.sender_bank,
             "receiver_account": tx.receiver_account,
             "receiver_bank": tx.receiver_bank,
             "amount_naira": float(tx.amount) / 100.0,
             "created_at": alert.created_at.isoformat() if alert.created_at else None,
+            "transaction": _tx_to_summary(tx),
         }
     )
+    stats = dashboard_stats(db)
+    await broadcast_stats(stats)
 
     return {
         "id": alert.id,

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+"use client";
+
 import { Spinner } from "@heroui/react";
 import AnalyticsPanel from "../components/dashboard/AnalyticsPanel.jsx";
 import TransactionFeed from "../components/dashboard/TransactionFeed.jsx";
@@ -12,37 +13,30 @@ import { useDashboard } from "../context/DashboardContext.jsx";
  * — Right “investigation” rail = active alert / case actions
  */
 export default function DashboardPage() {
-  const { isConnected } = useDashboard();
-  const [latched, setLatched] = useState(false);
+  const { isConnected, transactionsLoading, bootstrapError } = useDashboard();
 
-  useEffect(() => {
-    const t = setTimeout(() => setLatched(true), 2200);
-    return () => clearTimeout(t);
-  }, []);
-
-  const ready = isConnected || latched;
-
-  if (!ready) {
+  if (transactionsLoading && !bootstrapError) {
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-6 py-16 text-default-500">
         <Spinner color="primary" size="lg" />
-        <p className="text-default-400 text-sm font-medium">Connecting to Titan…</p>
+        <p className="text-default-400 text-sm font-medium">Loading dashboard data…</p>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col px-3 py-3 sm:px-5 sm:py-4 lg:px-6 lg:py-5">
-      <header className="mb-4 shrink-0 lg:mb-5">
+    <div className="flex min-h-0 flex-1 flex-col px-3 pt-2 pb-3 sm:px-5 sm:pt-3 sm:pb-4 lg:px-6 lg:pt-3 lg:pb-5">
+      <header className="mb-2 shrink-0 sm:mb-3">
         <p className="text-default-500 text-[0.65rem] font-bold uppercase tracking-[0.2em]">Workspace</p>
         <h1 className="text-default-foreground text-lg font-bold tracking-tight sm:text-xl">Transaction monitoring</h1>
-        <p className="text-default-500 mt-1 max-w-3xl text-sm leading-relaxed">
+        <p className="text-default-500 mt-0.5 max-w-3xl text-sm leading-snug">
           Review live transfers, open cases from the queue, and act on holds — same flow as typical fraud and case tools.
+          {!isConnected ? " Live socket disconnected; data may refresh more slowly until reconnected." : ""}
         </p>
       </header>
 
       {/* Metrics + throughput band (full width) */}
-      <section className="mb-4 shrink-0 lg:mb-5">
+      <section className="mb-3 shrink-0 sm:mb-4">
         <AnalyticsPanel layout="workspace" />
       </section>
 

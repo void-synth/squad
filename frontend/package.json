@@ -2,30 +2,35 @@
   "name": "titan-frontend",
   "private": true,
   "version": "0.0.0",
-  "type": "module",
   "scripts": {
-    "dev": "node scripts/clear-vite-cache.mjs && vite --host 127.0.0.1 --port 5173",
-    "dev:fresh": "node scripts/clear-vite-cache.mjs && vite --host 127.0.0.1 --port 5173 --force",
-    "build": "vite build",
-    "preview": "vite preview"
+    "clean": "node scripts/clean-next.cjs",
+    "build:clean": "npm run clean && npm run build",
+    "dev": "next dev --hostname 127.0.0.1 --port 3000",
+    "dev:reset": "npm run clean && npm run dev",
+    "dev:3001": "next dev --hostname 127.0.0.1 --port 3001",
+    "build": "next build",
+    "start": "next start --hostname 127.0.0.1 --port 3000",
+    "dev:5173": "next dev --hostname 127.0.0.1 --port 5173",
+    "lint": "next lint"
   },
   "dependencies": {
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@heroui/react": "^3.0.4",
-    "@tailwindcss/vite": "^4.3.0",
+    "@tailwindcss/postcss": "^4.3.0",
     "axios": "^1.7.9",
     "chart.js": "^4.5.1",
     "framer-motion": "^12.38.0",
     "iconsax-react": "^0.0.8",
+    "next": "^15.1.0",
+    "postcss": "^8.4.49",
     "react": "^19.0.0",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "^19.0.0",
-    "react-router-dom": "^7.1.1",
     "socket.io-client": "^4.8.1",
     "tailwindcss": "^4.3.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^6.0.11"
+    "eslint": "^9.17.0",
+    "eslint-config-next": "^15.1.0"
   }
 }

@@ -1,6 +1,13 @@
 """
 HTTP client for Squad sandbox APIs.
 
+Base URL: ``SQUAD_BASE_URL`` (default ``https://sandbox-api-d.squadco.com``).
+
+Endpoints (confirm against https://docs.squadco.com before production changes):
+- ``POST /virtual-account`` — virtual account creation (payload shape may vary by product).
+- ``GET /transaction/verify/{transaction_ref}`` — verify payment status.
+- ``POST /payout/transfer`` — outbound transfer (gated by ``SQUAD_ENABLE_PAYOUT`` at call sites).
+
 INTERCEPTION (honest demo behaviour):
 We do NOT call a "freeze funds" API on Squad — that endpoint does not exist
 in this integration. Real interception is modelled by **not** calling payout
@@ -72,6 +79,9 @@ class SquadClient:
         reference: str,
         narration: str,
     ) -> dict[str, Any]:
+        if not settings["SQUAD_ENABLE_PAYOUT"]:
+            logger.warning("initiate_transfer blocked: SQUAD_ENABLE_PAYOUT is false")
+            return {"success": False, "error": "SQUAD_ENABLE_PAYOUT is disabled"}
         body = {
             "amount": amount,
             "bank_code": bank_code,

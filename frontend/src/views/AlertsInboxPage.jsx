@@ -1,15 +1,17 @@
+"use client";
+
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { Button, Card, Chip, Spinner } from "@heroui/react";
 import { ArrowRight2 } from "../icons/isax.jsx";
 import PageShell from "../components/layout/PageShell.jsx";
-import { getAlerts } from "../services/api.js";
+import { formatApiError, getAlerts } from "../services/api.js";
 import { normalizeAlert } from "../utils/alertNormalize.js";
 
 const fmt = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 });
 
 export default function AlertsInboxPage() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [mode, setMode] = useState("open");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,7 +25,7 @@ export default function AlertsInboxPage() {
       const data = await getAlerts(params);
       setRows(Array.isArray(data) ? data.map((a) => normalizeAlert(a)).filter(Boolean) : []);
     } catch (e) {
-      setError(e?.message || "Failed to load alerts");
+      setError(formatApiError(e));
       setRows([]);
     } finally {
       setLoading(false);
@@ -87,7 +89,7 @@ export default function AlertsInboxPage() {
                       size="sm"
                       className="w-full font-semibold"
                       endContent={<ArrowRight2 size={16} variant="Linear" />}
-                      onPress={() => navigate(`/transactions/${encodeURIComponent(ref)}`)}
+                      onPress={() => router.push(`/transactions/${encodeURIComponent(ref)}`)}
                     >
                       View transaction
                     </Button>

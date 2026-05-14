@@ -1,3 +1,5 @@
+"use client";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Button,
@@ -11,6 +13,7 @@ import {
 } from "@heroui/react";
 import { Danger, SecuritySafe, TickCircle } from "../../icons/isax.jsx";
 import { useDashboard } from "../../context/DashboardContext.jsx";
+import { formatApiError } from "../../services/api.js";
 import TransactionGraph, { useAlertGraph } from "../graph/TransactionGraph.jsx";
 
 const fmt = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 });
@@ -72,12 +75,7 @@ export default function AlertPanel() {
       setAnalystName("");
       setReason("");
     } catch (e) {
-      const msg =
-        e?.response?.data?.detail != null
-          ? typeof e.response.data.detail === "string"
-            ? e.response.data.detail
-            : JSON.stringify(e.response.data.detail)
-          : e?.message || "Request failed";
+      const msg = formatApiError(e);
       setActionError(msg);
     } finally {
       setActionLoading(false);

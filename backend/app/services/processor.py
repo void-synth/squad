@@ -16,9 +16,11 @@ from sqlalchemy.orm import Session
 
 from app.ai.risk_engine import risk_engine
 from app.core import queue as redis_queue
+from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.socket_manager import broadcast_alert, broadcast_stats, broadcast_transaction
 from app.models.models import AccountProfile, AuditLog, FraudAlert, Transaction
+from app.services.platform_fee import summary_fee_fields
 from app.services.stats import dashboard_stats
 
 logger = logging.getLogger(__name__)
@@ -122,11 +124,20 @@ async def process_transaction(transaction: dict) -> None:
         db.commit()
         db.refresh(tx)
 
+        if settings["SQUAD_VERIFY_ON_INGEST"] and settings["SQUAD_SECRET_KEY"]:
+            from app.services.squad_client import squad_client as _squad
+
+            try:
+                await _squad.get_transaction_details(tx.transaction_ref)
+            except Exception:
+                logger.debug("Squad ingest verify skipped for %s", tx.transaction_ref, exc_info=True)
+
+        gross = float(tx.amount or 0)
         summary = {
             "id": tx.id,
             "transaction_ref": tx.transaction_ref,
-            "amount": float(tx.amount),
-            "amount_naira": float(tx.amount) / 100.0,
+            "amount": gross,
+            "amount_naira": gross / 100.0,
             "sender_account": tx.sender_account,
             "receiver_account": tx.receiver_account,
             "sender_bank": tx.sender_bank,
@@ -135,6 +146,7 @@ async def process_transaction(transaction: dict) -> None:
             "risk_score": float(tx.risk_score),
             "created_at": tx.created_at.isoformat() if tx.created_at else None,
         }
+        summary.update(summary_fee_fields(gross))
         await broadcast_transaction(summary)
 
         if level == 3:

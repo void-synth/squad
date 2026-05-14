@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, Chip } from "@heroui/react";
 import { Activity, Chart2, Danger, SecuritySafe, TickCircle, WalletMoney } from "../../icons/isax.jsx";
@@ -37,6 +39,31 @@ function useAnimatedNumber(target, duration = 800) {
   return val;
 }
 
+function HoldsReleasesCard({ held, released, compact }) {
+  return (
+    <Card.Root className="rounded-2xl border border-default-200/80 bg-content1/80 shadow-sm backdrop-blur-sm border-t-4 border-t-primary">
+      <Card.Content className={compact ? "gap-2 p-3" : "gap-3 p-4"}>
+        <div className={`text-default-500 flex items-center gap-2 ${compact ? "mb-0" : "mb-0.5"}`}>
+          <SecuritySafe size={compact ? 16 : 18} variant="Bold" className="text-primary" />
+          <span className={`font-bold uppercase tracking-wider ${compact ? "text-[0.6rem]" : "text-[0.65rem]"}`}>Holds & releases</span>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className={`text-default-500 font-medium uppercase tracking-wide ${compact ? "text-[0.55rem]" : "text-[0.6rem]"}`}>Held</p>
+            <p className={`text-default-foreground font-bold tabular-nums ${compact ? "text-lg" : "text-2xl"}`}>{Math.round(held).toLocaleString()}</p>
+            <p className={`text-default-500 leading-tight ${compact ? "text-[0.6rem]" : "text-xs"}`}>Active L3</p>
+          </div>
+          <div>
+            <p className={`text-default-500 font-medium uppercase tracking-wide ${compact ? "text-[0.55rem]" : "text-[0.6rem]"}`}>Released</p>
+            <p className={`text-default-foreground font-bold tabular-nums ${compact ? "text-lg" : "text-2xl"}`}>{Math.round(released).toLocaleString()}</p>
+            <p className={`text-default-500 leading-tight ${compact ? "text-[0.6rem]" : "text-xs"}`}>Analyst cleared</p>
+          </div>
+        </div>
+      </Card.Content>
+    </Card.Root>
+  );
+}
+
 const ACCENT = {
   neutral: "border-t-default-300",
   primary: "border-t-primary",
@@ -69,6 +96,9 @@ export default function AnalyticsPanel({ layout = "default" }) {
   const fpr = useAnimatedNumber(stats.false_positive_rate ?? 0);
   const held = useAnimatedNumber(stats.total_held ?? 0);
   const released = useAnimatedNumber(stats.total_released ?? 0);
+  const reserve = useAnimatedNumber(stats.total_platform_fee_naira ?? 0);
+  const feeRateRaw = Number(stats.platform_fee_rate);
+  const feeRatePct = ((Number.isFinite(feeRateRaw) ? feeRateRaw : 0.05) * 100).toFixed(0);
   const topFlagged = Array.isArray(stats.top_flagged_accounts) ? stats.top_flagged_accounts : [];
 
   const chartData = useMemo(() => {
@@ -127,6 +157,14 @@ export default function AnalyticsPanel({ layout = "default" }) {
           compact={workspace}
         />
         <StatCard
+          title="Titan reserve"
+          value={formatCompactNaira(reserve)}
+          subtitle={`Simulated ${feeRatePct}% platform fee`}
+          accent="success"
+          icon={Chart2}
+          compact={workspace}
+        />
+        <StatCard
           title="False positive"
           value={`${fpr.toFixed(1)}%`}
           subtitle="Released / held"
@@ -134,8 +172,7 @@ export default function AnalyticsPanel({ layout = "default" }) {
           icon={TickCircle}
           compact={workspace}
         />
-        <StatCard title="Held" value={Math.round(held).toLocaleString()} subtitle="Active L3 holds" accent="danger" icon={SecuritySafe} compact={workspace} />
-        <StatCard title="Released" value={Math.round(released).toLocaleString()} subtitle="Analyst cleared" accent="success" icon={Chart2} compact={workspace} />
+        <HoldsReleasesCard held={held} released={released} compact={workspace} />
       </div>
 
       {topFlagged.length > 0 ? (

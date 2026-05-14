@@ -1,6 +1,6 @@
 import { io } from "socket.io-client";
 
-const url = import.meta.env.VITE_SOCKET_URL || "";
+const url = process.env.NEXT_PUBLIC_SOCKET_URL || "";
 
 export function createDashboardSocket() {
   return io(url, {

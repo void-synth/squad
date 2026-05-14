@@ -1,4 +1,6 @@
-"""Squad webhook receiver: HMAC verification and queue ingest."""
+"""Squad webhook receiver: signature verification and queue ingest."""
+
+from __future__ import annotations
 
 import hashlib
 import hmac
@@ -6,39 +8,64 @@ import json
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
 from app.core import queue as redis_queue
 from app.models.models import Transaction
+from app.services.squad_webhook_normalize import normalize_squad_webhook_payload
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["webhook"])
 
 
-def _verify_signature(raw_body: bytes, signature_header: str | None) -> bool:
+def _verify_squad_webhook(raw_body: bytes, x_encrypted_body: str | None, x_legacy_sig: str | None) -> bool:
+    """
+    Official Squad: ``x-squad-encrypted-body`` = HMAC-SHA512(secret, raw_body), hex (case-insensitive).
+
+    Local ``simulate.py``: ``x-squad-signature`` = HMAC-SHA256(secret, raw_body), hex.
+
+    If ``SQUAD_WEBHOOK_LEGACY_SHA256`` is false, legacy header is not accepted unless official header verifies.
+    """
     secret = settings["SQUAD_SECRET_KEY"]
-    if not secret or not signature_header:
+    if not secret:
         return False
-    digest = hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(digest, signature_header.strip())
+
+    legacy_ok = bool(settings["SQUAD_WEBHOOK_LEGACY_SHA256"])
+
+    if x_encrypted_body:
+        digest = hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha512).hexdigest().upper()
+        expected = x_encrypted_body.strip().upper()
+        return hmac.compare_digest(digest, expected)
+
+    if legacy_ok and x_legacy_sig:
+        digest256 = hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
+        return hmac.compare_digest(digest256, x_legacy_sig.strip())
+
+    return False
 
 
 @router.post("/webhook/squad")
 async def squad_webhook(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
-    x_squad_signature: Annotated[str | None, Header(alias="x-squad-signature")] = None,
 ):
     """
-    Receive Squad webhooks. Verifies HMAC-SHA256 of raw body vs x-squad-signature (hex).
+    Receive Squad webhooks.
+
+    Verifies ``x-squad-encrypted-body`` (HMAC-SHA512) per Squad docs, or legacy ``x-squad-signature`` (SHA256)
+    for local ``simulate.py`` when ``SQUAD_WEBHOOK_LEGACY_SHA256`` is enabled.
     """
     raw_body = await request.body()
 
-    if not _verify_signature(raw_body, x_squad_signature):
+    enc = request.headers.get("x-squad-encrypted-body") or request.headers.get("X-Squad-Encrypted-Body")
+    legacy = request.headers.get("x-squad-signature") or request.headers.get("X-Squad-Signature")
+
+    if not _verify_squad_webhook(raw_body, enc, legacy):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail={"error": "Invalid signature"})
 
     try:
@@ -47,17 +74,21 @@ async def squad_webhook(
         logger.warning("Invalid JSON body: %s", e)
         raise HTTPException(status_code=400, detail={"error": "Invalid JSON"}) from e
 
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail={"error": "JSON object required"})
+
+    flat = normalize_squad_webhook_payload(payload)
+    if not flat or not flat.get("transaction_ref"):
+        raise HTTPException(status_code=400, detail={"error": "transaction_ref required"})
+
     def g(key: str, default: str = "") -> str:
-        v = payload.get(key, default)
+        v = flat.get(key, default)
         if v is None:
             return default
         return str(v)
 
     transaction_ref = g("transaction_ref")
-    if not transaction_ref:
-        raise HTTPException(status_code=400, detail={"error": "transaction_ref required"})
-
-    amount = float(payload.get("amount", 0) or 0)
+    amount = float(flat.get("amount", 0) or 0)
 
     tx = Transaction(
         transaction_ref=transaction_ref,
@@ -73,8 +104,13 @@ async def squad_webhook(
         risk_score=0.0,
     )
     db.add(tx)
-    db.commit()
-    db.refresh(tx)
+    try:
+        db.commit()
+        db.refresh(tx)
+    except IntegrityError:
+        db.rollback()
+        logger.info("Duplicate webhook for transaction_ref=%s — acknowledged", transaction_ref)
+        return {"status": "duplicate"}
 
     queue_payload = {
         "id": tx.id,
@@ -87,7 +123,7 @@ async def squad_webhook(
         "description": tx.description,
         "device_id": tx.device_id,
         "bvn": tx.bvn,
-        "receiver_is_new": bool(payload.get("receiver_is_new", False)),
+        "receiver_is_new": bool(flat.get("receiver_is_new", False)),
     }
     await redis_queue.push_transaction(queue_payload)
 

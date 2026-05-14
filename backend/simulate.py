@@ -3,6 +3,14 @@ Demo simulation: POST signed webhooks to the local backend.
 
 Run from repo: `cd backend && python simulate.py`
 Requires backend on :8000, Redis, Postgres, and matching SQUAD_SECRET_KEY in .env.
+
+High volume uses the same path as real traffic: verify signature → DB → Redis queue →
+worker runs the risk engine (velocity / graph / metadata) on each transaction.
+
+Examples:
+  python simulate.py -n 500 --concurrency 30
+  python simulate.py -n 2000 -c 50 --fraud-rate 0.12
+  python simulate.py -n 50                    # slow, one-at-a-time (0.3s pause)
 """
 
 from __future__ import annotations
@@ -194,42 +202,140 @@ def _parse_args() -> argparse.Namespace:
         metavar="N",
         help="Number of webhook events to send (default: 200). Each uses a unique transaction_ref.",
     )
+    p.add_argument(
+        "-c",
+        "--concurrency",
+        type=int,
+        default=1,
+        metavar="K",
+        help="Max in-flight HTTP posts at once (default: 1). Use 20-80 to stress API + queue.",
+    )
+    p.add_argument(
+        "--fraud-rate",
+        type=float,
+        default=0.08,
+        help="Fraction of transactions that use fraud-style payloads (default: 0.08).",
+    )
+    p.add_argument(
+        "--delay",
+        type=float,
+        default=None,
+        metavar="SEC",
+        help="Pause after each post when concurrency is 1 (default: 0.3s). When concurrency>1, default is 0.",
+    )
+    p.add_argument(
+        "--progress-every",
+        type=int,
+        default=50,
+        metavar="M",
+        help="Print progress every M completed webhooks (default: 50).",
+    )
+    p.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Random seed for reproducible payloads (optional).",
+    )
     return p.parse_args()
 
 
-async def run_simulation(n_total: int) -> None:
-    random.seed(int(time.time()) % 2**32)
+def _build_payload_sequence(n_total: int, fraud_rate: float) -> list[dict[str, Any]]:
     if n_total < 1:
         raise SystemExit("count must be at least 1")
-    n_fraud = int(round(n_total * 0.08))
+    rate = min(max(fraud_rate, 0.0), 1.0)
+    n_fraud = int(round(n_total * rate))
     flags = ["smurfing", "velocity_spike", "device_sharing", "new_bvns"]
-    fraud_seq = []
-    for _ in range(n_fraud):
-        fraud_seq.append(random.choice(flags))
+    fraud_seq = [random.choice(flags) for _ in range(n_fraud)]
     kinds = ["fraud"] * n_fraud + ["normal"] * (n_total - n_fraud)
     random.shuffle(kinds)
     fraud_iter = iter(fraud_seq)
+    out: list[dict[str, Any]] = []
+    for i in range(n_total):
+        if kinds[i] == "normal":
+            payload = generate_normal_transaction()
+        else:
+            payload = generate_fraud_transaction(next(fraud_iter))
+        payload.pop("_note", None)
+        out.append(payload)
+    return out
 
-    async with httpx.AsyncClient() as client:
-        for i in range(n_total):
-            if kinds[i] == "normal":
-                payload = generate_normal_transaction()
-            else:
-                payload = generate_fraud_transaction(next(fraud_iter))
-            payload.pop("_note", None)
 
-            body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
-            headers = {"Content-Type": "application/json", "x-squad-signature": _sign(body)}
-            r = await client.post(WEBHOOK_URL, content=body, headers=headers, timeout=30.0)
-            r.raise_for_status()
+async def run_simulation(
+    n_total: int,
+    *,
+    concurrency: int,
+    fraud_rate: float,
+    delay: float | None,
+    progress_every: int,
+    seed: int | None,
+) -> None:
+    if seed is not None:
+        random.seed(seed)
+    else:
+        random.seed(int(time.time()) % 2**32)
 
-            if (i + 1) % 10 == 0 or i == 0:
+    if concurrency < 1:
+        raise SystemExit("concurrency must be at least 1")
+    if n_total > 100_000:
+        print("Warning: counts above 100k can stress Postgres/Redis; consider starting smaller.")
+
+    if not SECRET or SECRET.strip() == "your_squad_secret_key_here":
+        print("Warning: SQUAD_SECRET_KEY missing or still default — webhooks will 401.")
+
+    payloads = _build_payload_sequence(n_total, fraud_rate)
+    per_request_delay = delay
+    if per_request_delay is None:
+        per_request_delay = 0.3 if concurrency == 1 else 0.0
+
+    completed = 0
+    errors: list[str] = []
+    lock = asyncio.Lock()
+    sem = asyncio.Semaphore(concurrency)
+
+    async def post_payload(client: httpx.AsyncClient, payload: dict[str, Any]) -> None:
+        nonlocal completed
+        body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+        headers = {"Content-Type": "application/json", "x-squad-signature": _sign(body)}
+        async with sem:
+            try:
+                r = await client.post(WEBHOOK_URL, content=body, headers=headers, timeout=120.0)
+                r.raise_for_status()
+            except Exception as e:
+                async with lock:
+                    errors.append(f"{payload.get('transaction_ref')}: {e!s}")
+                return
+            finally:
+                if concurrency == 1 and per_request_delay > 0:
+                    await asyncio.sleep(per_request_delay)
+
+        async with lock:
+            completed += 1
+            pe = max(1, progress_every)
+            if completed == n_total or completed % pe == 0:
                 flagged = await _fetch_flagged(client)
-                print(f"Sent {i + 1}/{n_total} transactions... [{flagged} flagged so far]")
+                print(f"Completed {completed}/{n_total} webhooks… [stats: {flagged} flagged]")
 
-            await asyncio.sleep(0.3)
+    limits = httpx.Limits(max_connections=max(concurrency + 10, 20), max_keepalive_connections=concurrency + 5)
+    async with httpx.AsyncClient(limits=limits, http2=False) as client:
+        await asyncio.gather(*[post_payload(client, p) for p in payloads])
+
+    if errors:
+        print(f"\n{len(errors)} webhook(s) failed (showing up to 12):")
+        for line in errors[:12]:
+            print(" ", line)
+        raise SystemExit(1)
+    print(f"\nDone. Sent {n_total} transactions; risk worker will keep draining the queue if any remain.")
 
 
 if __name__ == "__main__":
     args = _parse_args()
-    asyncio.run(run_simulation(args.count))
+    asyncio.run(
+        run_simulation(
+            args.count,
+            concurrency=args.concurrency,
+            fraud_rate=args.fraud_rate,
+            delay=args.delay,
+            progress_every=args.progress_every,
+            seed=args.seed,
+        )
+    )

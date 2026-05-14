@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useId, useMemo, useState } from "react";
 import { Spinner } from "@heroui/react";
 import { getTransactionDetail } from "../../services/api.js";
