@@ -12,7 +12,7 @@ function navClass(isActive) {
     "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold no-underline transition-colors",
     isActive
       ? "bg-primary/15 text-primary border border-primary/25"
-      : "text-default-600 hover:bg-default-100 hover:text-default-foreground border border-transparent",
+      : "text-default-600 hover:bg-default-100/80 hover:text-default-foreground border border-transparent",
   ].join(" ");
 }
 
@@ -28,8 +28,8 @@ export default function AppSidebar() {
   const isAgent = pathname === "/agent" || pathname.startsWith("/agent/");
 
   return (
-    <aside className="border-default-200/80 bg-content1/95 sticky top-0 z-40 flex h-dvh w-56 shrink-0 flex-col border-r backdrop-blur-md">
-      <div className="flex h-16 items-center gap-3 border-b border-default-200/70 px-4">
+    <aside className="titan-sidebar-float sticky top-3 z-40 my-3 ml-3 flex h-[calc(100dvh-1.5rem)] w-64 min-h-0 shrink-0 flex-col overflow-hidden">
+      <div className="border-default-200/70 flex h-16 shrink-0 items-center gap-3 border-b px-4">
         <span className="bg-primary/15 ring-primary/20 relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl ring-1">
           <Image src="/titan-logo.png" alt="Titan" width={40} height={40} className="object-contain p-1" priority />
         </span>
@@ -41,7 +41,7 @@ export default function AppSidebar() {
         </div>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1 p-3" aria-label="Primary">
+      <nav className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3" aria-label="Primary">
         <Link href="/" className={navClass(isHome)}>
           <Home2 size={20} variant={isHome ? "Bold" : "Linear"} className="shrink-0" />
           Monitoring

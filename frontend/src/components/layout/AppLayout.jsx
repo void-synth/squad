@@ -11,7 +11,7 @@ export default function AppLayout({ children }) {
   const { bootstrapError, retryBootstrap } = useDashboard();
 
   return (
-    <div className="titan-app-bg text-foreground flex h-dvh min-h-0 max-h-dvh flex-row overflow-hidden">
+    <div className="titan-app-bg text-foreground flex h-dvh min-h-0 max-h-dvh flex-row gap-3 overflow-hidden pr-3">
       <AppSidebar />
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">

@@ -11,6 +11,10 @@ Examples:
   python simulate.py -n 500 --concurrency 30
   python simulate.py -n 2000 -c 50 --fraud-rate 0.12
   python simulate.py -n 50                    # slow, one-at-a-time (0.3s pause)
+  python simulate.py -n 80 -c 5 --base-url https://YOUR_APP.onrender.com   # seed deployed Titan
+
+Requires matching ``SQUAD_SECRET_KEY`` locally and on the server; for signed simulator payloads set
+``SQUAD_WEBHOOK_LEGACY_SHA256=true`` on Render while ingesting from this script.
 """
 
 from __future__ import annotations
@@ -193,9 +197,9 @@ def generate_fraud_transaction(fraud_type: str) -> dict[str, Any]:
     return generate_normal_transaction()
 
 
-async def _fetch_flagged(client: httpx.AsyncClient) -> int:
+async def _fetch_flagged(client: httpx.AsyncClient, stats_url: str) -> int:
     try:
-        r = await client.get(STATS_URL, timeout=5.0)
+        r = await client.get(stats_url, timeout=5.0)
         r.raise_for_status()
         data = r.json()
         return int(data.get("total_flagged", 0))
@@ -247,6 +251,16 @@ def _parse_args() -> argparse.Namespace:
         default=None,
         help="Random seed for reproducible payloads (optional).",
     )
+    p.add_argument(
+        "--base-url",
+        type=str,
+        default=None,
+        metavar="URL",
+        help=(
+            "Deployed Titan base URL (e.g. https://squad-sx0c.onrender.com). "
+            "Targets …/api/v1/webhook/squad and …/api/v1/stats; overrides SIM_* env."
+        ),
+    )
     return p.parse_args()
 
 
@@ -279,6 +293,8 @@ async def run_simulation(
     delay: float | None,
     progress_every: int,
     seed: int | None,
+    webhook_url: str | None = None,
+    stats_url: str | None = None,
 ) -> None:
     if seed is not None:
         random.seed(seed)
@@ -289,6 +305,10 @@ async def run_simulation(
         raise SystemExit("concurrency must be at least 1")
     if n_total > 100_000:
         print("Warning: counts above 100k can stress Postgres/Redis; consider starting smaller.")
+
+    wh_url = (webhook_url or WEBHOOK_URL).strip()
+    st_url = (stats_url or STATS_URL).strip()
+    print(f"Webhook POST → {wh_url}")
 
     if not SECRET or SECRET.strip() == "your_squad_secret_key_here":
         print("Warning: SQUAD_SECRET_KEY missing or still default — webhooks will 401.")
@@ -309,7 +329,7 @@ async def run_simulation(
         headers = {"Content-Type": "application/json", "x-squad-signature": _sign(body)}
         async with sem:
             try:
-                r = await client.post(WEBHOOK_URL, content=body, headers=headers, timeout=120.0)
+                r = await client.post(wh_url, content=body, headers=headers, timeout=120.0)
                 r.raise_for_status()
             except Exception as e:
                 async with lock:
@@ -323,7 +343,7 @@ async def run_simulation(
             completed += 1
             pe = max(1, progress_every)
             if completed == n_total or completed % pe == 0:
-                flagged = await _fetch_flagged(client)
+                flagged = await _fetch_flagged(client, st_url)
                 print(f"Completed {completed}/{n_total} webhooks… [stats: {flagged} flagged]")
 
     limits = httpx.Limits(max_connections=max(concurrency + 10, 20), max_keepalive_connections=concurrency + 5)
@@ -340,6 +360,11 @@ async def run_simulation(
 
 if __name__ == "__main__":
     args = _parse_args()
+    webhook_override = stats_override = None
+    if args.base_url:
+        base = args.base_url.strip().rstrip("/")
+        webhook_override = f"{base}/api/v1/webhook/squad"
+        stats_override = f"{base}/api/v1/stats"
     asyncio.run(
         run_simulation(
             args.count,
@@ -348,5 +373,7 @@ if __name__ == "__main__":
             delay=args.delay,
             progress_every=args.progress_every,
             seed=args.seed,
+            webhook_url=webhook_override,
+            stats_url=stats_override,
         )
     )
