@@ -11,3 +11,8 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.0"
+      # Link a Render Postgres instance in the dashboard; do not paste placeholders.
+      # - key: DATABASE_URL
+      #   fromDatabase:
+      #     name: titan-db
+      #     property: connectionString
