@@ -31,7 +31,7 @@ export default function AppSidebar() {
   return (
     <aside className="titan-sidebar-float sticky top-3 z-40 my-3 ml-3 flex h-[calc(100dvh-1.5rem)] w-64 min-h-0 shrink-0 flex-col overflow-hidden">
       <div className="border-default-200/70 flex h-16 shrink-0 items-center gap-3 border-b px-4">
-        <span className="bg-primary/15 ring-primary/20 relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl ring-1">
+        <span className="bg-primary/15 relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl">
           <Image src="/titan-logo.png" alt="Titan" width={40} height={40} className="object-contain p-1" priority />
         </span>
         <div className="min-w-0">
