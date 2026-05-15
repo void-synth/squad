@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Button, Card, CardBody, Input, Spinner } from "@heroui/react";
+import { Button, Card, Input, Spinner } from "@heroui/react";
 import { formatApiError, initiateSquadCheckout } from "../services/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
@@ -98,19 +98,19 @@ export default function BillingPage() {
       </header>
 
       {returned ? (
-        <Card className="border-success/30 bg-success/10 mb-4 max-w-xl border">
-          <CardBody className="gap-1 py-4">
+        <Card.Root className="border-success/30 bg-success/10 mb-4 max-w-xl rounded-2xl border">
+          <Card.Content className="gap-1 px-4 py-4">
             <p className="text-success text-sm font-semibold">Thanks — payment flow returned to Titan.</p>
             <p className="text-default-600 text-xs">
               If payment succeeded, Squad emails a receipt. You can close this message and pick another amount to give
               again.
             </p>
-          </CardBody>
-        </Card>
+          </Card.Content>
+        </Card.Root>
       ) : null}
 
-      <Card className="border-default-200/70 max-w-xl border shadow-sm">
-        <CardBody className="gap-4 py-5">
+      <Card.Root className="border-default-200/70 max-w-xl rounded-2xl border shadow-sm">
+        <Card.Content className="flex flex-col gap-4 px-5 py-5">
           <div>
             <p className="text-default-500 mb-2 text-xs font-semibold uppercase tracking-wide">Amount</p>
             <div className="flex flex-wrap gap-2">
@@ -181,8 +181,8 @@ export default function BillingPage() {
             Sandbox keys only charge test money. Production keys charge real NGN. Callback URL must be HTTPS on deploy,
             or localhost during development.
           </p>
-        </CardBody>
-      </Card>
+        </Card.Content>
+      </Card.Root>
     </div>
   );
 }
