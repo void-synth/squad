@@ -11,10 +11,10 @@ export default function AppLayout({ children }) {
   const { bootstrapError, retryBootstrap } = useDashboard();
 
   return (
-    <div className="titan-app-bg text-foreground flex min-h-dvh flex-row">
+    <div className="titan-app-bg text-foreground flex h-dvh min-h-0 max-h-dvh flex-row overflow-hidden">
       <AppSidebar />
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {bootstrapError ? (
           <div className="border-danger/30 bg-danger/10 shrink-0 border-b px-4 py-3 sm:px-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -26,9 +26,9 @@ export default function AppLayout({ children }) {
           </div>
         ) : null}
 
-        <main className="bg-content1/30 flex min-h-0 min-w-0 w-full flex-1 flex-col">
-          {/* Cap readable width on very wide displays; keeps dashboard table + rail from stretching edge-to-edge */}
-          <div className="mx-auto flex min-h-0 w-full max-w-[1360px] min-w-0 flex-1 flex-col">{children}</div>
+        <main className="bg-content1/30 flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain [-webkit-overflow-scrolling:touch]">
+          {/* Single scroll region for the workspace (fixes mobile / nested flex scroll traps). */}
+          <div className="mx-auto flex w-full min-w-0 max-w-[1360px] flex-col pb-6">{children}</div>
         </main>
       </div>
     </div>

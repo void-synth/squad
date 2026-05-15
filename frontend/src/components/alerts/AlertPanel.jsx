@@ -83,7 +83,7 @@ export default function AlertPanel() {
   }
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col">
+    <div className="relative flex w-full min-w-0 flex-col">
       {flash ? (
         <div
           className="pointer-events-none fixed inset-0 z-50 border-[3px] border-danger/55 shadow-[inset_0_0_80px_rgba(255,60,60,0.12)]"
@@ -91,8 +91,8 @@ export default function AlertPanel() {
         />
       ) : null}
 
-      <Card.Root className="flex min-h-0 flex-1 flex-col rounded-2xl border border-default-200/80 bg-content1/85 shadow-md backdrop-blur-md">
-        <Card.Content className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 sm:p-5">
+      <Card.Root className="flex flex-col rounded-2xl border border-default-200/80 bg-content1/85 shadow-md backdrop-blur-md">
+        <Card.Content className="flex flex-col gap-4 p-4 sm:p-5">
           {!activeAlert ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 py-16 text-center">
               <TickCircle size={48} variant="Bold" className="text-success" />

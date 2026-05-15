@@ -10,7 +10,11 @@ from app.models.models import Base
 
 DATABASE_URL = settings["DATABASE_URL"] or "sqlite:///./squad_sentinel_local.db"
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+_engine_kwargs: dict = {"pool_pre_ping": True}
+if DATABASE_URL.startswith("sqlite"):
+    _engine_kwargs["connect_args"] = {"check_same_thread": False}
+
+engine = create_engine(DATABASE_URL, **_engine_kwargs)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

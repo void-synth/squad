@@ -72,7 +72,7 @@ export default function TransactionFeed() {
   }, [rows, page]);
 
   return (
-    <Card.Root className="flex min-h-0 flex-1 flex-col rounded-2xl border border-default-200/80 bg-content1/80 shadow-sm backdrop-blur-sm">
+    <Card.Root className="flex flex-col rounded-2xl border border-default-200/80 bg-content1/80 shadow-sm backdrop-blur-sm">
       <Card.Header className="flex flex-col gap-3 border-b border-default-200/60 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <Card.Title className="text-default-foreground text-sm font-semibold">Live feed</Card.Title>
@@ -108,14 +108,14 @@ export default function TransactionFeed() {
         })}
       </div>
 
-      <Card.Content className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-0">
+      <Card.Content className="relative flex flex-col p-0">
         {transactionsLoading ? (
           <div className="bg-content1/60 absolute inset-0 z-[1] flex items-center justify-center gap-3 backdrop-blur-sm">
             <Spinner color="primary" size="md" />
             <span className="text-default-500 text-sm">Loading…</span>
           </div>
         ) : null}
-        <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 sm:p-3">
+        <div ref={listRef} className="p-2 sm:p-3">
         <div className="flex flex-col gap-2">
           {displayedRows.map((tx) => {
             const ref = tx.transaction_ref || tx.id;

@@ -1,0 +1,13 @@
+{
+  "name": "squad-sentinel",
+  "private": true,
+  "workspaces": ["frontend"],
+  "scripts": {
+    "build": "npm run build --workspace=titan-frontend",
+    "dev": "npm run dev --workspace=titan-frontend",
+    "lint": "npm run lint --workspace=titan-frontend"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
