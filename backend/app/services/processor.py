@@ -142,6 +142,8 @@ async def process_transaction(transaction: dict) -> None:
             "receiver_account": tx.receiver_account,
             "sender_bank": tx.sender_bank,
             "receiver_bank": tx.receiver_bank,
+            "sender_name": tx.sender_name or "",
+            "receiver_name": tx.receiver_name or "",
             "status": tx.status,
             "risk_score": float(tx.risk_score),
             "created_at": tx.created_at.isoformat() if tx.created_at else None,
@@ -149,7 +151,7 @@ async def process_transaction(transaction: dict) -> None:
         summary.update(summary_fee_fields(gross))
         await broadcast_transaction(summary)
 
-        if level == 3:
+        if level in (2, 3):
             alert_row = (
                 db.query(FraudAlert)
                 .filter(FraudAlert.transaction_id == tx.id)
@@ -157,23 +159,27 @@ async def process_transaction(transaction: dict) -> None:
                 .first()
             )
             if alert_row:
-                await broadcast_alert(
-                    {
-                        "alert_id": alert_row.id,
-                        "transaction_ref": tx.transaction_ref,
-                        "risk_score": float(alert_row.risk_score),
-                        "alert_level": alert_row.alert_level,
-                        "reason": alert_row.reason,
-                        "pattern_type": alert_row.pattern_type,
-                        "action_taken": alert_row.action_taken,
-                        "sender_account": tx.sender_account,
-                        "sender_bank": tx.sender_bank,
-                        "receiver_account": tx.receiver_account,
-                        "receiver_bank": tx.receiver_bank,
-                        "amount_naira": float(tx.amount) / 100.0,
-                        "created_at": alert_row.created_at.isoformat() if alert_row.created_at else None,
-                    }
-                )
+                alert_payload = {
+                    "alert_id": alert_row.id,
+                    "transaction_ref": tx.transaction_ref,
+                    "risk_score": float(alert_row.risk_score),
+                    "alert_level": alert_row.alert_level,
+                    "reason": alert_row.reason,
+                    "pattern_type": alert_row.pattern_type,
+                    "action_taken": alert_row.action_taken,
+                    "sender_account": tx.sender_account,
+                    "sender_bank": tx.sender_bank,
+                    "sender_name": tx.sender_name or "",
+                    "receiver_account": tx.receiver_account,
+                    "receiver_bank": tx.receiver_bank,
+                    "amount_naira": float(tx.amount) / 100.0,
+                    "created_at": alert_row.created_at.isoformat() if alert_row.created_at else None,
+                }
+                await broadcast_alert(alert_payload)
+                if level == 3:
+                    from app.ai.agent.service import narrate_fraud_alert
+
+                    asyncio.create_task(narrate_fraud_alert(alert_payload))
 
         _processed_since_stats += 1
         _total_processed += 1

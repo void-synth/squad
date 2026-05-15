@@ -41,6 +41,10 @@ def get_settings() -> dict:
         "TITAN_PLATFORM_FEE_RATE": _platform_fee_rate(),
         "TITAN_FEE_RECEIVER_ACCOUNT": os.getenv("TITAN_FEE_RECEIVER_ACCOUNT", "TITAN_OPS_RESERVE").strip()
         or "TITAN_OPS_RESERVE",
+        "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY", ""),
+        "GEMINI_MODEL": os.getenv("GEMINI_MODEL", "gemini-2.0-flash").strip() or "gemini-2.0-flash",
+        "AGENT_KB_PATH": os.getenv("AGENT_KB_PATH", "").strip(),
+        "AGENT_KB_TOP_K": os.getenv("AGENT_KB_TOP_K", "5").strip() or "5",
     }
 
 

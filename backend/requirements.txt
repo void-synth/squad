@@ -12,3 +12,4 @@ networkx
 python-socketio
 websockets
 pydantic
+google-generativeai

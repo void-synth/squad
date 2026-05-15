@@ -46,6 +46,7 @@ export default function TransactionFeed() {
     transactionStatusFilter,
     setTransactionStatusFilter,
     transactionsLoading,
+    highlightedRef,
   } = useDashboard();
   const listRef = useRef(null);
   const [page, setPage] = useState(1);
@@ -124,7 +125,12 @@ export default function TransactionFeed() {
               <Link
                 key={String(ref)}
                 href={to}
-                className="group border border-default-200/60 bg-content2/40 hover:border-primary/35 hover:bg-content2/90 flex rounded-xl p-3 no-underline transition-all"
+                className={[
+                  "group flex rounded-xl border p-3 no-underline transition-all",
+                  highlightedRef === String(ref)
+                    ? "border-warning bg-warning/10 ring-2 ring-warning/40"
+                    : "border-default-200/60 bg-content2/40 hover:border-primary/35 hover:bg-content2/90",
+                ].join(" ")}
               >
                 <div className="min-w-0 flex-1 pr-3">
                   <div className="text-default-foreground flex flex-wrap items-center gap-2 text-sm">

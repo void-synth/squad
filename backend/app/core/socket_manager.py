@@ -40,3 +40,15 @@ async def broadcast_alert(data: dict[str, Any]) -> None:
 
 async def broadcast_stats(data: dict[str, Any]) -> None:
     await sio.emit("stats_update", data)
+
+
+async def broadcast_agent_message(data: dict[str, Any]) -> None:
+    await sio.emit("agent_message", data)
+
+
+async def broadcast_agent_action(data: dict[str, Any]) -> None:
+    await sio.emit("agent_action", data)
+
+
+async def broadcast_agent_state(data: dict[str, Any]) -> None:
+    await sio.emit("agent_state", data)

@@ -48,3 +48,91 @@
 .titan-dash-line {
   animation: titan-dash 2.2s linear infinite;
 }
+
+.titan-neural-wrap {
+  border: 1px solid hsl(152 15% 18% / 0.12);
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 40%, hsl(152 42% 88% / 0.35), transparent 70%),
+    linear-gradient(hsl(152 15% 18% / 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(152 15% 18% / 0.04) 1px, transparent 1px);
+  background-size: auto, 32px 32px, 32px 32px;
+  padding: 0.75rem;
+}
+
+.titan-neural-svg {
+  min-height: 320px;
+}
+
+.titan-neural-core {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 9999px;
+  border: 2px solid hsl(152 55% 42% / 0.55);
+  background: radial-gradient(circle at 35% 30%, hsl(152 60% 75%), hsl(152 45% 38%));
+  box-shadow: 0 0 28px hsl(152 55% 45% / 0.45);
+}
+
+.titan-neural-core--thinking {
+  border-color: hsl(43 70% 50% / 0.7);
+  box-shadow: 0 0 32px hsl(43 70% 55% / 0.5);
+}
+
+.titan-neural-core--alert {
+  border-color: hsl(0 70% 55% / 0.75);
+  box-shadow: 0 0 32px hsl(0 70% 55% / 0.45);
+}
+
+.titan-neural-core__label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: hsl(152 25% 18%);
+}
+
+.titan-thought-bubble {
+  position: absolute;
+  z-index: 10;
+  max-width: 9rem;
+  transform: translate(-50%, -50%);
+  padding: 0.35rem 0.65rem;
+  border-radius: 9999px;
+  border: 1px solid hsl(152 35% 40% / 0.35);
+  background: hsl(0 0% 100% / 0.88);
+  backdrop-filter: blur(8px);
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: hsl(152 20% 22%);
+  box-shadow: 0 4px 14px hsl(152 20% 20% / 0.12);
+  text-align: center;
+}
+
+.titan-thought-bubble--pulse {
+  border-color: hsl(43 60% 50% / 0.5);
+  color: hsl(43 40% 28%);
+}
+
+.titan-thought-bubble--alert {
+  border-color: hsl(0 60% 55% / 0.45);
+  color: hsl(0 50% 35%);
+}
+
+.titan-thought-bubble--query {
+  max-width: 11rem;
+  border-radius: 0.75rem;
+}
+
+.titan-thought-bubble--entity {
+  border-color: hsl(152 50% 42% / 0.45);
+}
+
+.titan-thought-bubble--link {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}

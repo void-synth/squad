@@ -6,7 +6,7 @@ import socketio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import integration, transactions, webhook
+from app.api import agent, integration, transactions, webhook
 from app.core.database import init_db
 from app.core.socket_manager import sio
 
@@ -42,6 +42,7 @@ def root():
 fastapi_app.include_router(webhook.router)
 fastapi_app.include_router(transactions.router)
 fastapi_app.include_router(integration.router)
+fastapi_app.include_router(agent.router)
 
 
 # Combined ASGI app for uvicorn (HTTP + Socket.IO)

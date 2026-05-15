@@ -1,0 +1,82 @@
+{
+  "app_name": "Squad Sentinel",
+  "agent_name": "Titan",
+  "tagline": "fraud operations AI for Nigerian payment monitoring",
+  "routes": {
+    "dashboard": "/",
+    "login": "/login",
+    "agent": "/agent",
+    "alerts": "/alerts",
+    "transaction_detail": "/transactions/{ref}"
+  },
+  "env_vars": [
+    {"name": "GEMINI_API_KEY", "purpose": "Powers Titan chat via Google Gemini"},
+    {"name": "GEMINI_MODEL", "purpose": "Gemini model id, default gemini-2.0-flash"},
+    {"name": "DATABASE_URL", "purpose": "PostgreSQL connection string"},
+    {"name": "REDIS_URL", "purpose": "Redis for job queue"},
+    {"name": "SQUAD_SECRET_KEY", "purpose": "Webhook HMAC verification"},
+    {"name": "NEXT_PUBLIC_API_URL", "purpose": "Frontend API base URL"},
+    {"name": "AGENT_KB_PATH", "purpose": "Path to titan_qa.jsonl knowledge file"},
+    {"name": "AGENT_KB_TOP_K", "purpose": "Number of FAQ snippets sent to Gemini"}
+  ],
+  "tx_statuses": ["pending", "safe", "flagged", "held", "released", "escalated"],
+  "link_types": ["shared_receiver", "shared_device", "graph_path"],
+  "action_types": [
+    {"type": "filter_transactions", "status": "flagged", "desc": "Filter feed to flagged transfers"},
+    {"type": "filter_transactions", "status": "held", "desc": "Filter feed to held transfers"},
+    {"type": "navigate", "path": "/alerts", "desc": "Open alerts inbox"},
+    {"type": "navigate", "path": "/agent", "desc": "Open Titan agent page"},
+    {"type": "highlight_transaction", "desc": "Highlight a row in the feed by transaction_ref"}
+  ],
+  "demo_people": [
+    {"name": "Bolu Adeyemi", "account": "8011223344", "bank": "UBA"},
+    {"name": "Daniel Okoro", "account": "8022334455", "bank": "Access Bank"},
+    {"name": "Emeka Okafor", "account": "0123456789", "bank": "GTBank"},
+    {"name": "Ngozi Adeyemi", "account": "2087654321", "bank": "Zenith"},
+    {"name": "Chidi Nwosu", "account": "3012345678", "bank": "Kuda"}
+  ],
+  "banks": ["OPay", "PalmPay", "Kuda", "GTBank", "Zenith", "UBA", "Access Bank"],
+  "glossary": [
+    {"term": "held", "definition": "Transaction paused by risk engine pending analyst review."},
+    {"term": "flagged", "definition": "Elevated risk; shown in feed with alert styling."},
+    {"term": "released", "definition": "Analyst cleared a held payment."},
+    {"term": "escalated", "definition": "Case raised for senior review."},
+    {"term": "risk score", "definition": "0-1 composite from velocity, graph, and metadata signals."},
+    {"term": "velocity", "definition": "How fast money moves between accounts in a short window."},
+    {"term": "shared receiver", "definition": "Two senders paid the same receiver account."},
+    {"term": "graph path", "definition": "NetworkX path linking accounts in the money-hop graph."},
+    {"term": "transaction_ref", "definition": "Unique Squad reference for a transfer; always cite it."},
+    {"term": "webhook", "definition": "Signed POST from Squad that ingests new payments."},
+    {"term": "simulate.py", "definition": "Local script posting demo webhooks to populate the dashboard."},
+    {"term": "Socket.IO", "definition": "Pushes live stats, transactions, and alerts to the UI."},
+    {"term": "Memory tab", "definition": "Agent UI panel showing entity links from live DB."},
+    {"term": "Titan platform fee", "definition": "Simulated fee split on gross amount (TITAN_PLATFORM_FEE_RATE)."}
+  ],
+  "greeting_templates": [
+    {"q": "Hello", "a": "Hello! I'm Titan, your fraud ops agent for Squad Sentinel. Ask about transfers, links between senders, or say show flagged to filter the feed."},
+    {"q": "Hi Titan", "a": "Hi! I'm Titan. I can explain alerts, find links between senders like Bolu and Daniel, and control the dashboard when you ask."},
+    {"q": "Good morning", "a": "Good morning. Titan here—ready to help with fraud monitoring, transaction lookups, and dashboard actions."},
+    {"q": "Thanks", "a": "You're welcome. Ask anytime you need help with transfers, alerts, or navigation."},
+    {"q": "Bye", "a": "Goodbye. I'll be here on the agent page when you need fraud ops help."}
+  ],
+  "persona_qa": [
+    {"q": "What can you do?", "a": "I analyze live transaction memory, explain links between senders and receivers, cite transaction_ref values, and can filter the feed, open alerts, or highlight rows when you ask."},
+    {"q": "Who are you?", "a": "I'm Titan, the Squad Sentinel fraud operations agent. I use live PostgreSQL data plus a built-in FAQ knowledge base."},
+    {"q": "Are you real AI?", "a": "I use Google Gemini when GEMINI_API_KEY is set, plus live transaction context and a 5,000-entry FAQ dataset. Without Gemini I still answer from FAQs and rules."}
+  ],
+  "dashboard_tasks": [
+    {"task": "filter flagged transactions", "answer": "Say show flagged or ask me to filter flagged—I emit filter_transactions with status flagged."},
+    {"task": "view alerts inbox", "answer": "Open /alerts from the nav or ask me to go to alerts."},
+    {"task": "see live throughput chart", "answer": "The dashboard KPI strip and Chart.js graph update via Socket.IO as webhooks arrive."},
+    {"task": "inspect a transfer graph", "answer": "Click a transaction row to open detail with the money-hop graph (NetworkX-backed)."},
+    {"task": "log in", "answer": "Use /login with any email and password—demo auth stores session in the browser only."}
+  ],
+  "troubleshooting": [
+    {"q": "No transactions on dashboard", "a": "Start PostgreSQL and Redis, run the backend on port 8000, then run python simulate.py from backend/ with matching SQUAD_SECRET_KEY."},
+    {"q": "Agent not answering well", "a": "Set GEMINI_API_KEY in backend/.env and ensure titan_qa.jsonl exists (run scripts/generate_titan_qa_dataset.py)."},
+    {"q": "UI shows offline", "a": "Check NEXT_PUBLIC_API_URL and NEXT_PUBLIC_SOCKET_URL point to http://localhost:8000."}
+  ],
+  "question_prefixes": ["What is", "Explain", "Tell me about", "Define", "Describe"],
+  "how_prefixes": ["How do I", "How can I", "How to", "What's the way to"],
+  "paraphrase_openers": ["Please", "Could you", "Can you", "I need to", "Help me"]
+}

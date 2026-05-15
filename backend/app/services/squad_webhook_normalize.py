@@ -84,6 +84,8 @@ def normalize_squad_webhook_payload(payload: dict[str, Any]) -> dict[str, Any] |
         out.setdefault("device_id", out.get("device_id", ""))
         out.setdefault("bvn", out.get("bvn", ""))
         out.setdefault("receiver_is_new", bool(out.get("receiver_is_new", False)))
+        out.setdefault("sender_name", out.get("sender_name", ""))
+        out.setdefault("receiver_name", out.get("receiver_name", ""))
         if out.get("transaction_ref"):
             return out
 
@@ -119,4 +121,6 @@ def normalize_squad_webhook_payload(payload: dict[str, Any]) -> dict[str, Any] |
         "device_id": _pick_str(merged, "device_id", "DeviceId")[:128],
         "bvn": _pick_str(merged, "bvn", "BVN")[:32],
         "receiver_is_new": bool(merged.get("receiver_is_new", False)),
+        "sender_name": _pick_str(merged, "sender_name", "SenderName", "customer_name")[:128],
+        "receiver_name": _pick_str(merged, "receiver_name", "ReceiverName")[:128],
     }

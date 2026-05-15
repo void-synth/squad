@@ -85,3 +85,13 @@ export async function escalateAlert(id, body) {
   const { data } = await api.post(`/api/v1/alerts/${id}/escalate`, body);
   return data;
 }
+
+export async function postAgentChat(body) {
+  const { data } = await api.post("/api/v1/agent/chat", body);
+  return data;
+}
+
+export async function getAgentMemory() {
+  const { data } = await api.get("/api/v1/agent/memory");
+  return data;
+}

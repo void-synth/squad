@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-import redis as redis_sync
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import text
@@ -20,7 +19,7 @@ router = APIRouter(prefix="/api/v1", tags=["integration"])
 
 
 @router.get("/health")
-def health() -> dict[str, Any]:
+async def health() -> dict[str, Any]:
     """Liveness + dependency checks for dashboards and load balancers."""
     db_ok = False
     try:
@@ -30,16 +29,18 @@ def health() -> dict[str, Any]:
     except Exception:
         logger.debug("health: database check failed", exc_info=True)
 
-    redis_ok = False
-    try:
-        r = redis_sync.from_url(settings["REDIS_URL"], decode_responses=True)
-        r.ping()
-        redis_ok = True
-    except Exception:
-        logger.debug("health: redis check failed", exc_info=True)
+    from app.core import queue as tx_queue
 
-    overall = "ok" if db_ok and redis_ok else "degraded"
-    return {"status": overall, "database": db_ok, "redis": redis_ok}
+    queue_mode = await tx_queue.queue_backend()
+    redis_ok = queue_mode == "redis"
+
+    overall = "ok" if db_ok else "degraded"
+    return {
+        "status": overall,
+        "database": db_ok,
+        "redis": redis_ok,
+        "queue": queue_mode,
+    }
 
 
 @router.get("/integration/squad/status")

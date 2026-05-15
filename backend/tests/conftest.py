@@ -18,7 +18,9 @@ os.environ.setdefault("REDIS_URL", "redis://127.0.0.1:6379/15")
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.database import engine
+from sqlalchemy.orm import Session
+
+from app.core.database import SessionLocal, engine, init_db
 from app.models.models import Base
 
 
@@ -34,6 +36,16 @@ def demo_fixture() -> dict:
     path = _BACKEND_ROOT / "fixtures" / "demo_workflow.json"
     with open(path, encoding="utf-8") as f:
         return json.load(f)
+
+
+@pytest.fixture
+def db_session() -> Session:
+    init_db()
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 @pytest.fixture

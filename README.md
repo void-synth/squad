@@ -101,6 +101,15 @@ Webhooks: Signed Squad-style payloads are verified (HMAC), stored as pending, an
 Worker: Background processing scores payments (velocity / graph / metadata style signals).
 Outcomes: High scores move transactions to held / flagged, create FraudAlert rows, and emit Socket.IO updates.
 UI: Live throughput (Chart.js), KPI strip, transaction feed with filters, alert / case panel, transaction detail with money-hop graph, alerts inbox.
+Live agent: Open `/agent` for a Minecraft-style banker character ([skinview3d](https://github.com/bs-community/skinview3d) + `frontend/public/agent/banker-skin.png`), Memory tab (transaction links by name/account), and Gemini-powered Q&A. Set `GEMINI_API_KEY` in `backend/.env`; optional `NEXT_PUBLIC_AGENT_SKIN_URL` in `frontend/.env` to swap the 64×64 skin PNG (demo skin only—replace for production). Example: *What links Bolu and Daniel's OPay transfers?*
+
+**Titan FAQ knowledge base (5,000 Q&A pairs):** After clone, generate the dataset once from `backend/`:
+
+```bash
+python scripts/generate_titan_qa_dataset.py
+```
+
+This writes `backend/app/ai/agent/data/titan_qa.jsonl` (greetings, dashboard help, fraud ops, setup, demo entities). At chat time, Titan retrieves similar FAQs (TF-IDF) and sends them to Gemini together with live transaction memory. Without `GEMINI_API_KEY`, strong FAQ matches still answer from the file. Optional env: `AGENT_KB_PATH`, `AGENT_KB_TOP_K` (default `5`), `AGENT_KB_FALLBACK_THRESHOLD` (default `0.45`). Tests use `titan_qa.sample.jsonl` when the full file is absent.
 Project layout
 Path	Role
 backend/main.py

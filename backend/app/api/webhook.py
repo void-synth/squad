@@ -97,6 +97,8 @@ async def squad_webhook(
         receiver_account=g("receiver_account"),
         sender_bank=g("sender_bank"),
         receiver_bank=g("receiver_bank"),
+        sender_name=g("sender_name", ""),
+        receiver_name=g("receiver_name", ""),
         description=g("description", ""),
         device_id=g("device_id", ""),
         bvn=g("bvn", ""),
@@ -123,6 +125,8 @@ async def squad_webhook(
         "description": tx.description,
         "device_id": tx.device_id,
         "bvn": tx.bvn,
+        "sender_name": tx.sender_name,
+        "receiver_name": tx.receiver_name,
         "receiver_is_new": bool(flat.get("receiver_is_new", False)),
     }
     await redis_queue.push_transaction(queue_payload)

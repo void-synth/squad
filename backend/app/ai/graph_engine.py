@@ -23,7 +23,7 @@ class TransactionGraph:
             if not self.graph.has_node(node):
                 self.graph.add_node(node)
         if self.graph.has_edge(sender, receiver):
-            data = self.graph[sender][receiver]
+            data = self.graph[sender][receiver];
             data["transfer_count"] = int(data.get("transfer_count", 1)) + 1
             data["total_amount"] = float(data.get("total_amount", 0.0)) + float(amount)
             data["last_timestamp"] = timestamp

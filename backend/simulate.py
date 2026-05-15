@@ -42,6 +42,8 @@ def _sign(body: bytes) -> str:
 
 
 SENDERS: list[dict[str, Any]] = [
+    {"name": "Bolu Adeyemi", "bank": "UBA", "account": "8011223344", "min_n": 4000, "max_n": 18000},
+    {"name": "Daniel Okoro", "bank": "Access Bank", "account": "8022334455", "min_n": 5000, "max_n": 22000},
     {"name": "Emeka Okafor", "bank": "GTBank", "account": "0123456789", "min_n": 3000, "max_n": 15000},
     {"name": "Ngozi Adeyemi", "bank": "Zenith Bank", "account": "2087654321", "min_n": 5000, "max_n": 20000},
     {"name": "Chidi Nwosu", "bank": "First Bank", "account": "3012345678", "min_n": 2000, "max_n": 12000},
@@ -109,6 +111,8 @@ def generate_normal_transaction() -> dict[str, Any]:
         "receiver_account": r["account"],
         "sender_bank": s["bank"],
         "receiver_bank": r["bank"],
+        "sender_name": s["name"],
+        "receiver_name": "",
         "description": random.choice(MEMOS),
         "device_id": f"DEV_{secrets.token_hex(3)}",
         "bvn": f"22{random.randint(10**8, 10**9-1)}",
@@ -127,13 +131,15 @@ def generate_fraud_transaction(fraud_type: str) -> dict[str, Any]:
             "receiver_account": r["account"],
             "sender_bank": s["bank"],
             "receiver_bank": r["bank"],
+            "sender_name": s["name"],
+            "receiver_name": "",
             "description": "payment",
             "device_id": "DEVICE_SMURF",
             "bvn": "22123456789",
             "receiver_is_new": True,
         }
     if fraud_type == "velocity_spike":
-        s = SENDERS[2]  # Chidi — normal max 12k
+        s = next(x for x in SENDERS if x["name"] == "Chidi Nwosu")
         r = random.choice(RECEIVERS)
         return {
             "transaction_ref": _ref(),
@@ -142,13 +148,14 @@ def generate_fraud_transaction(fraud_type: str) -> dict[str, Any]:
             "receiver_account": r["account"],
             "sender_bank": s["bank"],
             "receiver_bank": r["bank"],
+            "sender_name": s["name"],
+            "receiver_name": "",
             "description": "transfer",
             "device_id": "DEVICE_SPIKE",
             "bvn": "22999888776",
             "receiver_is_new": False,
         }
     if fraud_type == "device_sharing":
-        names = ["Emeka Okafor", "Ngozi Adeyemi", "Chidi Nwosu", "Amina Bello", "Tunde Bakare"]
         s = random.choice(SENDERS)
         r = random.choice(RECEIVERS)
         return {
@@ -158,11 +165,13 @@ def generate_fraud_transaction(fraud_type: str) -> dict[str, Any]:
             "receiver_account": r["account"],
             "sender_bank": s["bank"],
             "receiver_bank": r["bank"],
+            "sender_name": s["name"],
+            "receiver_name": "",
             "description": "cash",
             "device_id": "DEVICE_009",
             "bvn": f"22{random.randint(10**8, 10**9-1)}",
             "receiver_is_new": False,
-            "_note": names,
+            "_note": "device_sharing",
         }
     if fraud_type == "new_bvns":
         s = random.choice(SENDERS)
@@ -174,6 +183,8 @@ def generate_fraud_transaction(fraud_type: str) -> dict[str, Any]:
             "receiver_account": r["account"],
             "sender_bank": s["bank"],
             "receiver_bank": r["bank"],
+            "sender_name": s["name"],
+            "receiver_name": "",
             "description": "ref: ABC123",
             "device_id": f"DEV_{secrets.token_hex(2)}",
             "bvn": "22111111111",

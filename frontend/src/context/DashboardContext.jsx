@@ -32,6 +32,7 @@ export function DashboardProvider({ children }) {
   const [bootstrapError, setBootstrapError] = useState(null);
   const [transactionsLoading, setTransactionsLoading] = useState(true);
   const [retryToken, setRetryToken] = useState(0);
+  const [highlightedRef, setHighlightedRef] = useState(null);
 
   const socketRef = useRef(null);
   const txFilterRef = useRef(transactionStatusFilter);
@@ -170,6 +171,17 @@ export function DashboardProvider({ children }) {
       setStats(payload || {});
     });
 
+    s.on("agent_action", (action) => {
+      if (!action || !action.type) return;
+      if (action.type === "filter_transactions") {
+        setTransactionStatusFilter(action.status ?? null);
+      } else if (action.type === "pin_alert" && action.alert_id != null) {
+        setPinnedAlertId(action.alert_id);
+      } else if (action.type === "highlight_transaction" && action.transaction_ref) {
+        setHighlightedRef(action.transaction_ref);
+      }
+    });
+
     s.connect();
     return () => {
       s.disconnect();
@@ -234,6 +246,8 @@ export function DashboardProvider({ children }) {
       bootstrapError,
       transactionsLoading,
       retryBootstrap,
+      highlightedRef,
+      setHighlightedRef,
     }),
     [
       transactions,
@@ -248,6 +262,7 @@ export function DashboardProvider({ children }) {
       bootstrapError,
       transactionsLoading,
       retryBootstrap,
+      highlightedRef,
     ]
   );
 

@@ -20,6 +20,8 @@ class Transaction(Base):
     receiver_account: Mapped[str] = mapped_column(String(64))
     sender_bank: Mapped[str] = mapped_column(String(128))
     receiver_bank: Mapped[str] = mapped_column(String(128))
+    sender_name: Mapped[str] = mapped_column(String(128), default="")
+    receiver_name: Mapped[str] = mapped_column(String(128), default="")
     description: Mapped[str] = mapped_column(String(512), default="")
     device_id: Mapped[str] = mapped_column(String(128), default="")
     bvn: Mapped[str] = mapped_column(String(32), default="")

@@ -18,8 +18,7 @@ if (-not (Test-TcpPort -Port 5432)) {
 }
 
 if (-not (Test-TcpPort -Port 6379)) {
-  Write-Host "Redis does not appear to be listening on localhost:6379" -ForegroundColor Red
-  exit 1
+  Write-Host "Redis not on localhost:6379 — worker will use in-memory queue (OK for local demo)." -ForegroundColor Yellow
 }
 
 if (Test-Path ".\venv\Scripts\Activate.ps1") {
