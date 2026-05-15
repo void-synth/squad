@@ -3,10 +3,14 @@ HTTP client for Squad sandbox APIs.
 
 Base URL: ``SQUAD_BASE_URL`` (default ``https://sandbox-api-d.squadco.com``).
 
-Endpoints (confirm against https://docs.squadco.com before production changes):
-- ``POST /virtual-account`` — virtual account creation (payload shape may vary by product).
-- ``GET /transaction/verify/{transaction_ref}`` — verify payment status.
-- ``POST /payout/transfer`` — outbound transfer (gated by ``SQUAD_ENABLE_PAYOUT`` at call sites).
+See https://docs.squadco.com/ — parity targets:
+
+- ``POST /virtual-account`` — VA issuance (optional ``email`` in body).
+- ``GET /transaction/verify/{transaction_ref}`` — verify payment (path segment URL-encoded).
+- ``POST /payout/account/lookup`` — resolve account name before transfer (Transfer API).
+- ``POST /payout/transfer`` — Fund Transfer (Squad fields: ``transaction_reference``,
+  ``amount`` string kobo, ``currency_id``, ``remark``, ``account_name``, …).
+- ``POST /transaction/initiate`` — inline checkout (Squad Payments API); returns a checkout URL.
 
 INTERCEPTION (honest demo behaviour):
 We do NOT call a "freeze funds" API on Squad — that endpoint does not exist
@@ -21,6 +25,7 @@ from __future__ import annotations
 import json
 import logging
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -29,6 +34,36 @@ from app.core.database import SessionLocal
 from app.models.models import AuditLog, Transaction
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_squad_checkout_url(payload: Any) -> str | None:
+    """Resolve checkout / auth URL from varied Squad response envelopes."""
+
+    def walk(obj: Any) -> str | None:
+        if isinstance(obj, str) and obj.startswith("http") and len(obj) > 12:
+            return obj
+        if not isinstance(obj, dict):
+            return None
+        for key in (
+            "checkout_url",
+            "checkout_link",
+            "auth_url",
+            "authorization_url",
+            "payment_url",
+            "url",
+            "link",
+        ):
+            v = obj.get(key)
+            if isinstance(v, str) and v.startswith("http"):
+                return v
+        nested = obj.get("data")
+        if nested is not None:
+            got = walk(nested)
+            if got:
+                return got
+        return None
+
+    return walk(payload)
 
 
 class SquadClient:
@@ -42,13 +77,22 @@ class SquadClient:
         }
         self._client = httpx.AsyncClient(base_url=self.base, headers=headers, timeout=30.0)
 
-    async def create_virtual_account(self, customer_name: str, bvn: str, mobile_number: str) -> dict[str, Any]:
-        body = {
+    async def create_virtual_account(
+        self,
+        customer_name: str,
+        bvn: str,
+        mobile_number: str,
+        *,
+        email: str | None = None,
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {
             "customer_name": customer_name,
             "bvn": bvn,
             "mobile_number": mobile_number,
             "currency": "NGN",
         }
+        if email:
+            body["email"] = email.strip()
         try:
             r = await self._client.post("/virtual-account", json=body)
             r.raise_for_status()
@@ -63,12 +107,40 @@ class SquadClient:
             raise
 
     async def get_transaction_details(self, transaction_ref: str) -> dict[str, Any]:
+        encoded = quote(str(transaction_ref).strip(), safe="")
         try:
-            r = await self._client.get(f"/transaction/verify/{transaction_ref}")
+            r = await self._client.get(f"/transaction/verify/{encoded}")
             r.raise_for_status()
             return r.json()
+        except httpx.HTTPStatusError as e:
+            body_preview = (e.response.text or "")[:400]
+            logger.warning(
+                "get_transaction_details HTTP %s ref=%r body_preview=%s",
+                e.response.status_code,
+                transaction_ref,
+                body_preview,
+            )
+            raise
         except Exception as e:
             logger.exception("get_transaction_details failed: %s", e)
+            raise
+
+    async def payout_account_lookup(self, bank_code: str, account_number: str) -> dict[str, Any]:
+        """Squad Transfer API — resolve recipient account name before ``payout/transfer``."""
+        body = {"bank_code": bank_code.strip(), "account_number": account_number.strip()}
+        try:
+            r = await self._client.post("/payout/account/lookup", json=body)
+            r.raise_for_status()
+            return r.json()
+        except httpx.HTTPStatusError as e:
+            logger.warning(
+                "payout_account_lookup HTTP %s body_preview=%s",
+                e.response.status_code,
+                (e.response.text or "")[:400],
+            )
+            raise
+        except Exception as e:
+            logger.exception("payout_account_lookup failed: %s", e)
             raise
 
     async def initiate_transfer(
@@ -76,19 +148,22 @@ class SquadClient:
         amount: int,
         bank_code: str,
         account_number: str,
+        account_name: str,
         reference: str,
         narration: str,
     ) -> dict[str, Any]:
         if not settings["SQUAD_ENABLE_PAYOUT"]:
             logger.warning("initiate_transfer blocked: SQUAD_ENABLE_PAYOUT is false")
             return {"success": False, "error": "SQUAD_ENABLE_PAYOUT is disabled"}
+        # Squad Fund Transfer expects documented field names (not legacy aliases).
         body = {
-            "amount": amount,
-            "bank_code": bank_code,
-            "account_number": account_number,
-            "reference": reference,
-            "narration": narration,
-            "currency": "NGN",
+            "transaction_reference": reference.strip(),
+            "amount": str(int(amount)),
+            "bank_code": bank_code.strip(),
+            "account_number": account_number.strip(),
+            "account_name": account_name.strip(),
+            "currency_id": "NGN",
+            "remark": (narration.strip() or reference.strip())[:512],
         }
         try:
             r = await self._client.post("/payout/transfer", json=body)
@@ -99,6 +174,55 @@ class SquadClient:
         except Exception as e:
             logger.exception("initiate_transfer failed: %s", e)
             return {"success": False, "error": str(e)}
+
+    async def initiate_inline_checkout(
+        self,
+        *,
+        email: str,
+        amount_kobo: int,
+        transaction_ref: str,
+        customer_name: str | None = None,
+        callback_url: str | None = None,
+        payment_channels: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Squad Payments — initiate inline checkout. Docs: POST ``/transaction/initiate``.
+        Returns Squad JSON plus ``checkout_url`` when derivable from the payload.
+        """
+        body: dict[str, Any] = {
+            "amount": int(amount_kobo),
+            "email": email.strip(),
+            "currency": "NGN",
+            "initiate_type": "inline",
+            "transaction_ref": transaction_ref.strip(),
+            "metadata": {"purpose": "titan_support", "product": "Titan fraud ops demo"},
+        }
+        if customer_name:
+            body["customer_name"] = customer_name.strip()[:200]
+        if callback_url:
+            body["callback_url"] = callback_url.strip()
+        if payment_channels:
+            body["payment_channels"] = payment_channels
+        try:
+            r = await self._client.post("/transaction/initiate", json=body)
+            r.raise_for_status()
+            raw = r.json()
+        except httpx.HTTPStatusError as e:
+            logger.warning(
+                "initiate_inline_checkout HTTP %s body_preview=%s",
+                e.response.status_code,
+                (e.response.text or "")[:400],
+            )
+            raise
+        except Exception as e:
+            logger.exception("initiate_inline_checkout failed: %s", e)
+            raise
+
+        checkout = _extract_squad_checkout_url(raw)
+        out = dict(raw) if isinstance(raw, dict) else {"raw": raw}
+        if checkout:
+            out["checkout_url"] = checkout
+        return out
 
     async def hold_transaction(self, transaction_ref: str, reason: str) -> dict[str, Any]:
         db = SessionLocal()

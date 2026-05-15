@@ -56,6 +56,11 @@ export async function squadPayout(body) {
   return data;
 }
 
+export async function initiateSquadCheckout(body) {
+  const { data } = await api.post("/api/v1/integration/squad/checkout/initiate", body);
+  return data;
+}
+
 export async function getTransactions(params = {}) {
   const { data } = await api.get("/api/v1/transactions", { params });
   return data;

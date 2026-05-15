@@ -27,6 +27,9 @@ def _verify_squad_webhook(raw_body: bytes, x_encrypted_body: str | None, x_legac
     """
     Official Squad: ``x-squad-encrypted-body`` = HMAC-SHA512(secret, raw_body), hex (case-insensitive).
 
+    Must use the **raw request body bytes** (same as PHP ``php://input``). Docs sometimes show
+    ``JSON.stringify(body)`` in Node—re-stringifying can break verification if spacing differs.
+
     Local ``simulate.py``: ``x-squad-signature`` = HMAC-SHA256(secret, raw_body), hex.
 
     If ``SQUAD_WEBHOOK_LEGACY_SHA256`` is false, legacy header is not accepted unless official header verifies.

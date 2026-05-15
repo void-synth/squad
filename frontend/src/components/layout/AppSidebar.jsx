@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@heroui/react";
-import { Home2, Notification, SecuritySafe } from "../../icons/isax.jsx";
+import { Home2, Notification, SecuritySafe, WalletMoney } from "../../icons/isax.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 function navClass(isActive) {
@@ -26,6 +26,7 @@ export default function AppSidebar() {
   const isHome = pathname === "/";
   const isAlerts = pathname === "/alerts" || pathname.startsWith("/alerts/");
   const isAgent = pathname === "/agent" || pathname.startsWith("/agent/");
+  const isBilling = pathname === "/billing" || pathname.startsWith("/billing/");
 
   return (
     <aside className="titan-sidebar-float sticky top-3 z-40 my-3 ml-3 flex h-[calc(100dvh-1.5rem)] w-64 min-h-0 shrink-0 flex-col overflow-hidden">
@@ -46,13 +47,21 @@ export default function AppSidebar() {
           <Home2 size={20} variant={isHome ? "Bold" : "Linear"} className="shrink-0" />
           Monitoring
         </Link>
-        <Link href="/alerts" className={navClass(isAlerts && !isHome && !isAgent)}>
-          <Notification size={20} variant={isAlerts && !isHome && !isAgent ? "Bold" : "Linear"} className="shrink-0" />
+        <Link href="/alerts" className={navClass(isAlerts && !isHome && !isAgent && !isBilling)}>
+          <Notification
+            size={20}
+            variant={isAlerts && !isHome && !isAgent && !isBilling ? "Bold" : "Linear"}
+            className="shrink-0"
+          />
           Alerts
         </Link>
         <Link href="/agent" className={navClass(isAgent)}>
           <SecuritySafe size={20} variant={isAgent ? "Bold" : "Linear"} className="shrink-0" />
           Agent
+        </Link>
+        <Link href="/billing" className={navClass(isBilling)}>
+          <WalletMoney size={20} variant={isBilling ? "Bold" : "Linear"} className="shrink-0" />
+          Billing
         </Link>
       </nav>
 

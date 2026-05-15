@@ -38,6 +38,7 @@ def _tx_to_summary(tx: Transaction) -> dict[str, Any]:
         "receiver_bank": tx.receiver_bank,
         "sender_name": tx.sender_name or "",
         "receiver_name": tx.receiver_name or "",
+        "description": (tx.description or "")[:512],
         "status": tx.status,
         "risk_score": float(tx.risk_score or 0),
         "created_at": tx.created_at.isoformat() if tx.created_at else None,

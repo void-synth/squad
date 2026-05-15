@@ -104,6 +104,25 @@ def normalize_squad_webhook_payload(payload: dict[str, Any]) -> dict[str, Any] |
     channel = _pick_str(merged, "channel", "Channel", default="squad")
     remarks = _pick_str(merged, "remarks", "Remarks", "description", "Description")
 
+    extras: list[str] = []
+    ind = _pick_str(merged, "transaction_indicator", "TransactionIndicator")
+    if ind:
+        extras.append(f"indicator={ind}")
+    meta = merged.get("meta")
+    if isinstance(meta, dict):
+        fr = _pick_str(meta, "freeze_transaction_ref", "FreezeTransactionRef")
+        frsn = _pick_str(meta, "reason_for_frozen_transaction", "ReasonForFrozenTransaction")
+        if fr:
+            extras.append(f"freeze_ref={fr}")
+        if frsn:
+            extras.append(f"freeze_reason={frsn[:120]}")
+    desc_core = (remarks or f"Squad {channel}")[:512]
+    if extras:
+        suffix = " | " + "; ".join(extras)
+        desc = (desc_core + suffix)[:512]
+    else:
+        desc = desc_core
+
     # Credit hits the VA: treat VA as receiver; counterparty is generic unless parsed later.
     receiver_account = va or _pick_str(merged, "receiver_account", "account_number")
     receiver_bank = channel or "Squad"
@@ -117,7 +136,7 @@ def normalize_squad_webhook_payload(payload: dict[str, Any]) -> dict[str, Any] |
         "receiver_account": receiver_account[:64],
         "sender_bank": sender_bank[:128] or "Unknown",
         "receiver_bank": receiver_bank[:128] or "Squad",
-        "description": (remarks or f"Squad {channel}")[:512],
+        "description": desc,
         "device_id": _pick_str(merged, "device_id", "DeviceId")[:128],
         "bvn": _pick_str(merged, "bvn", "BVN")[:32],
         "receiver_is_new": bool(merged.get("receiver_is_new", False)),
