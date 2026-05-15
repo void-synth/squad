@@ -140,7 +140,15 @@ async def _gemini_chat(
 
     try:
         response = model.generate_content(prompt)
-        text = (response.text or "").strip()
+        try:
+            text = (response.text or "").strip()
+        except ValueError as ve:
+            # Blocked or empty candidates — SDK raises instead of returning ""
+            logger.warning("Gemini returned no text (safety/block?): %s", ve)
+            text = ""
+        if not text:
+            logger.warning("Gemini empty reply; model=%s", settings.get("GEMINI_MODEL"))
+            return _fallback_reply(message, context, knowledge_hits)
     except Exception as e:
         logger.warning("Gemini call failed: %s", e)
         return _fallback_reply(message, context, knowledge_hits)
