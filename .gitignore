@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 .env
 *.db
+.pytest_titan.sqlite
 node_modules/
 .vite/
 dist/

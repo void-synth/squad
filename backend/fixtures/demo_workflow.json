@@ -1,0 +1,109 @@
+{
+  "simulation_config": {
+    "command": "python simulate.py -n 50 -c 8 --fraud-rate 0.1",
+    "num_events": 50,
+    "concurrency": 8,
+    "fraud_rate": 0.1,
+    "webhook_path": "/api/v1/webhook/squad"
+  },
+  "webhook": {
+    "method": "POST",
+    "path": "/api/v1/webhook/squad",
+    "headers_note": "Local simulate.py: x-squad-signature = hex(HMAC-SHA256(SQUAD_SECRET_KEY, raw UTF-8 body)).",
+    "body": {
+      "transaction_ref": "sqd_fixture_demo_01abcdef",
+      "amount": 1250000.0,
+      "sender_account": "0123456789",
+      "receiver_account": "9031112223",
+      "sender_bank": "GTBank",
+      "receiver_bank": "OPay",
+      "description": "school fees",
+      "device_id": "DEV_fixture01",
+      "bvn": "22123456789",
+      "receiver_is_new": false
+    },
+    "success_response": { "status": "received" },
+    "duplicate_response": { "status": "duplicate" }
+  },
+  "queue_job": {
+    "id": 10042,
+    "transaction_ref": "sqd_fixture_demo_01abcdef",
+    "amount": 1250000.0,
+    "sender_account": "0123456789",
+    "receiver_account": "9031112223",
+    "sender_bank": "GTBank",
+    "receiver_bank": "OPay",
+    "description": "school fees",
+    "device_id": "DEV_fixture01",
+    "bvn": "22123456789",
+    "receiver_is_new": false
+  },
+  "fraud_alert": {
+    "id": 9001,
+    "transaction_id": 10042,
+    "risk_score": 0.87,
+    "alert_level": 3,
+    "reason": "Velocity spike + new receiver pattern consistent with smurfing.",
+    "pattern_type": "velocity",
+    "action_taken": "held",
+    "resolved_by": "",
+    "resolved_at": null,
+    "created_at": "2026-05-15T10:00:05.123456"
+  },
+  "live_feed_row": {
+    "id": 10042,
+    "transaction_ref": "sqd_fixture_demo_01abcdef",
+    "amount_naira": 12500.0,
+    "sender_account": "0123456789",
+    "receiver_account": "9031112223",
+    "sender_bank": "GTBank",
+    "receiver_bank": "OPay",
+    "status": "held",
+    "risk_score": 0.87,
+    "created_at": "2026-05-15T10:00:00.000000",
+    "amount_gross_naira": 12500.0,
+    "platform_fee_naira": 125.0,
+    "net_settlement_naira": 12375.0,
+    "platform_fee_rate": 0.01,
+    "platform_fee_receiver_account": "TITAN_OPS_RESERVE"
+  },
+  "release": {
+    "path_template": "/api/v1/alerts/{alert_id}/release",
+    "request_body": {
+      "analyst_name": "demo_analyst",
+      "release_reason": "Customer verified; proceed with settlement."
+    },
+    "response_shape": {
+      "id": 9001,
+      "action_taken": "released",
+      "resolved_by": "demo_analyst",
+      "resolved_at": "2026-05-15T10:05:00.000000+00:00",
+      "transaction": { "status": "released" }
+    }
+  },
+  "socket_io": {
+    "events": [
+      {
+        "event": "fraud_alert",
+        "note": "Emitted after analyst release/escalate; payload includes nested transaction summary."
+      },
+      {
+        "event": "stats_update",
+        "note": "Emitted after release with dashboard_stats() payload."
+      }
+    ],
+    "stats_update_shape": {
+      "total_transactions": 0,
+      "total_flagged": 0,
+      "total_held": 0,
+      "total_released": 0,
+      "total_naira_intercepted": 0.0,
+      "false_positive_rate": 0.0,
+      "top_flagged_accounts": [],
+      "platform_fee_rate": 0.01,
+      "total_platform_fee_naira": 0.0,
+      "total_net_settlement_naira": 0.0,
+      "platform_fee_receiver_account": "TITAN_OPS_RESERVE"
+    }
+  }
+}
