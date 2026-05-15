@@ -1,13 +1,13 @@
 {
   "name": "squad-sentinel",
   "private": true,
-  "workspaces": ["frontend"],
-  "scripts": {
-    "build": "npm run build --workspace=titan-frontend",
-    "dev": "npm run dev --workspace=titan-frontend",
-    "lint": "npm run lint --workspace=titan-frontend"
-  },
+  "description": "Monorepo: app lives in frontend/. Install with npm --prefix frontend install; Vercel uses vercel.json.",
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "npm run build --prefix frontend",
+    "dev": "npm run dev --prefix frontend",
+    "lint": "npm run lint --prefix frontend"
   }
 }

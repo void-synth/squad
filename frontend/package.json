@@ -2,6 +2,9 @@
   "name": "titan-frontend",
   "private": true,
   "version": "0.0.0",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "clean": "node scripts/clean-next.cjs",
     "build:clean": "npm run clean && npm run build",
@@ -34,6 +37,7 @@
     "eslint-config-next": "^15.1.0"
   },
   "optionalDependencies": {
+    "@tailwindcss/oxide-linux-x64-gnu": "4.3.0",
     "lightningcss-linux-x64-gnu": "1.32.0"
   }
 }
