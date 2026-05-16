@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@heroui/react";
-import { Home2, Notification, SecuritySafe, WalletMoney } from "../../icons/isax.jsx";
+import { Chart2, Home2, Notification, SecuritySafe, WalletMoney } from "../../icons/isax.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 function navClass(isActive) {
@@ -27,6 +27,7 @@ export default function AppSidebar() {
   const isAlerts = pathname === "/alerts" || pathname.startsWith("/alerts/");
   const isAgent = pathname === "/agent" || pathname.startsWith("/agent/");
   const isBilling = pathname === "/billing" || pathname.startsWith("/billing/");
+  const isIntegrations = pathname === "/integrations" || pathname.startsWith("/integrations/");
 
   return (
     <aside className="titan-sidebar-float sticky top-3 z-40 my-3 ml-3 flex h-[calc(100dvh-1.5rem)] w-64 min-h-0 shrink-0 flex-col overflow-hidden">
@@ -47,10 +48,13 @@ export default function AppSidebar() {
           <Home2 size={20} variant={isHome ? "Bold" : "Linear"} className="shrink-0" />
           Monitoring
         </Link>
-        <Link href="/alerts" className={navClass(isAlerts && !isHome && !isAgent && !isBilling)}>
+        <Link
+          href="/alerts"
+          className={navClass(isAlerts && !isHome && !isAgent && !isBilling && !isIntegrations)}
+        >
           <Notification
             size={20}
-            variant={isAlerts && !isHome && !isAgent && !isBilling ? "Bold" : "Linear"}
+            variant={isAlerts && !isHome && !isAgent && !isBilling && !isIntegrations ? "Bold" : "Linear"}
             className="shrink-0"
           />
           Alerts
@@ -62,6 +66,10 @@ export default function AppSidebar() {
         <Link href="/billing" className={navClass(isBilling)}>
           <WalletMoney size={20} variant={isBilling ? "Bold" : "Linear"} className="shrink-0" />
           Billing
+        </Link>
+        <Link href="/integrations" className={navClass(isIntegrations)}>
+          <Chart2 size={20} variant={isIntegrations ? "Bold" : "Linear"} className="shrink-0" />
+          Integrations
         </Link>
       </nav>
 

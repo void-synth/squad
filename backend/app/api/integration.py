@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 
 from app.core.config import settings
+from app.core.database import SessionLocal
 from app.services.squad_client import squad_client
 
 logger = logging.getLogger(__name__)
